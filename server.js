@@ -11,12 +11,17 @@ const dbPath = path.join(__dirname, 'security-mo.db');
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use(express.static('public'));
 
 // Database connection
 const db = new sqlite3.Database(dbPath);
 
 // Routes
 app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+app.get('/api', (req, res) => {
     res.json({
         message: 'Security-MO Flight Search API',
         version: '3.0.0',
@@ -149,8 +154,9 @@ app.get('/api/search', (req, res) => {
     const query = `
         SELECT f.flight_number, f.airline_name, f.departure_time, f.arrival_time, 
                f.duration_minutes, f.aircraft_type,
-               orig.name as origin_name, orig.city as origin_city,
-               dest.name as dest_name, dest.city as dest_city,
+               f.origin_code, f.destination_code,
+               orig.name as origin_name, orig.city as origin_city, orig.country as origin_country,
+               dest.name as dest_name, dest.city as dest_city, dest.country as dest_country,
                orig.timezone as origin_timezone, dest.timezone as dest_timezone
         FROM flights f
         JOIN airports orig ON f.origin_code = orig.code

@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security-MO Flight Search</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- Navigation -->
+        <nav class="navbar">
+            <div class="nav-container">
+                <div class="nav-brand">
+                    <span class="material-icons">flight</span>
+                    <span class="brand-text">Security-MO Flights</span>
+                </div>
+                <div class="nav-tabs centered-tabs">
+                    <button class="nav-tab active" data-tab="search">
+                        <span class="material-icons">search</span>
+                        Flight Search
+                    </button>
+                    <button class="nav-tab" data-tab="explorer">
+                        <span class="material-icons">database</span>
+                        Database Explorer
+                    </button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Flight Search Tab -->
+        <div id="search-tab" class="tab-content active">
+            <div class="hero-section">
+                <div class="hero-content">
+                    <h1>Search Flights</h1>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-form">
+                    <!-- Airport Row -->
+                    <div class="form-row airport-row">
+                        <div class="form-group from-group">
+                            <label for="origin">From</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons">flight_takeoff</span>
+                                <input type="text" id="origin" placeholder="Origin city or airport" autocomplete="off">
+                                <div class="suggestions" id="origin-suggestions"></div>
+                            </div>
+                        </div>
+                        
+                        <button class="swap-button" id="swap-airports">
+                            <span class="material-icons">swap_horiz</span>
+                        </button>
+                        
+                        <div class="form-group to-group">
+                            <label for="destination">To</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons">flight_land</span>
+                                <input type="text" id="destination" placeholder="Destination city or airport" autocomplete="off">
+                                <div class="suggestions" id="destination-suggestions"></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Date Row -->
+                    <div class="form-row date-row">
+                        <div class="form-group departure-group">
+                            <label for="departure-date">Departure</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons">event</span>
+                                <input type="date" id="departure-date">
+                            </div>
+                        </div>
+                        
+                        <div class="form-group return-group">
+                            <label for="return-date">Return</label>
+                            <div class="input-wrapper">
+                                <span class="material-icons">event</span>
+                                <input type="date" id="return-date">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="button-row">
+                        <button class="search-button" id="search-flights">
+                            <span class="material-icons">search</span>
+                            Search flights
+                        </button>
+                        <button class="clear-button" id="clear-form">
+                            <span class="material-icons">clear</span>
+                            Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div class="results-container" id="results-container" style="display: none;">
+                <div class="results-header">
+                    <h2 id="results-title">Flight Results</h2>
+                    <div class="results-info" id="results-info"></div>
+                </div>
+                <div class="flights-list" id="flights-list"></div>
+            </div>
+
+            <!-- No Results -->
+            <div class="no-results" id="no-results" style="display: none;">
+                <span class="material-icons">flight_off</span>
+                <h3>No flights found</h3>
+                <p>Try adjusting your search criteria or check different airports.</p>
+            </div>
+        </div>
+
+        <!-- Database Explorer Tab -->
+        <div id="explorer-tab" class="tab-content">
+            <div class="explorer-container">
+                <div class="explorer-header">
+                    <h1>Database Explorer</h1>
+                    <p>Explore and query the flight database to verify search results</p>
+                </div>
+
+                <div class="explorer-sections">
+                    <!-- Database Stats -->
+                    <div class="explorer-section">
+                        <h2>
+                            <span class="material-icons">analytics</span>
+                            Database Statistics
+                        </h2>
+                        <div class="stats-grid" id="stats-grid">
+                            <div class="stat-card">
+                                <div class="stat-number" id="airports-count">-</div>
+                                <div class="stat-label">Airports</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="flights-count">-</div>
+                                <div class="stat-label">Flight Routes</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-number" id="airlines-count">-</div>
+                                <div class="stat-label">Airlines</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Airports Explorer -->
+                    <div class="explorer-section">
+                        <h2>
+                            <span class="material-icons">public</span>
+                            Airports Database
+                        </h2>
+                        <div class="query-controls">
+                            <input type="text" id="airport-search" placeholder="Search airports by name, code, or city...">
+                            <select id="airport-country">
+                                <option value="">All Countries</option>
+                            </select>
+                            <button id="load-airports">Load Airports</button>
+                        </div>
+                        <div class="data-table" id="airports-table"></div>
+                    </div>
+
+                    <!-- Flights Explorer -->
+                    <div class="explorer-section">
+                        <h2>
+                            <span class="material-icons">airplanemode_active</span>
+                            Flights Database
+                        </h2>
+                        <div class="query-controls">
+                            <input type="text" id="flight-origin" placeholder="Origin airport code (e.g., MNL)">
+                            <input type="text" id="flight-destination" placeholder="Destination airport code (e.g., LAX)">
+                            <input type="text" id="flight-airline" placeholder="Airline name or code">
+                            <button id="load-flights">Load Flights</button>
+                        </div>
+                        <div class="data-table" id="flights-table"></div>
+                    </div>
+
+                    <!-- Airlines Summary -->
+                    <div class="explorer-section">
+                        <h2>
+                            <span class="material-icons">business</span>
+                            Airlines Summary
+                        </h2>
+                        <div class="airlines-grid" id="airlines-grid"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="loading-spinner" id="loading-spinner" style="display: none;">
+            <div class="spinner"></div>
+            <p>Searching flights...</p>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
