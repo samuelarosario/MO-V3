@@ -4,8 +4,8 @@ const db = new sqlite3.Database('./security-mo.db');
 
 console.log('=== Flight Database Query ===\n');
 
-// Check for PR216 specifically
-db.all('SELECT * FROM flights WHERE flight_number = ?', ['PR216'], (err, rows) => {
+// Check for PR216 specifically (with and without space)
+db.all('SELECT * FROM flights WHERE flight_number IN (?, ?)', ['PR216', 'PR 216'], (err, rows) => {
     if (err) {
         console.error('Error querying PR216:', err);
     } else {
@@ -15,6 +15,9 @@ db.all('SELECT * FROM flights WHERE flight_number = ?', ['PR216'], (err, rows) =
                 console.log(`✈️  ${row.flight_number}: ${row.origin_code} → ${row.destination_code}`);
                 console.log(`🏢 ${row.airline_name}`);
                 console.log(`🕐 ${row.departure_time} → ${row.arrival_time}`);
+                console.log(`✈️  Aircraft: ${row.aircraft_type}`);
+                console.log(`⏱️  Duration: ${row.duration_minutes} minutes`);
+                console.log(`📅 Status: ${row.status}`);
             });
         } else {
             console.log('❌ PR216 not found in scheduled flights');
