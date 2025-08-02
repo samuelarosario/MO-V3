@@ -3,6 +3,8 @@ const express = require('express');
 const cors = require('cors');
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const SerpAPIFlightSearcher = require('./serpapi-flight-searcher');
+const SerpAPIatabaseUpdater = require('./database-updater-serpapi');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -16,6 +18,10 @@ app.use(express.static('public'));
 // Database connection
 const db = new sqlite3.Database(dbPath);
 
+// Initialize SerpAPI services
+const serpApi = new SerpAPIFlightSearcher();
+const serpUpdater = new SerpAPIatabaseUpdater();
+
 // Routes
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
@@ -26,10 +32,18 @@ app.get('/api', (req, res) => {
         message: 'Security-MO Flight Search API',
         version: '3.0.0',
         status: 'running',
+        serpapi: 'enabled',
         endpoints: {
             airports: '/api/airports',
             flights: '/api/flights',
-            search: '/api/search'
+            search: '/api/search',
+            serpapi: {
+                search: '/api/serpapi/search',
+                flight: '/api/serpapi/flight/:number',
+                route: '/api/serpapi/route/:origin/:destination',
+                update: '/api/serpapi/update',
+                stats: '/api/serpapi/stats'
+            }
         }
     });
 });
@@ -292,6 +306,192 @@ app.get('/api/database', (req, res) => {
     });
 });
 
+// ========================================
+// SerpAPI Endpoints
+// ========================================
+
+// Search flights with SerpAPI
+app.get('/api/serpapi/search', async (req, res) => {
+    try {
+        const { origin, destination, date } = req.query;
+        
+        if (!origin || !destination) {
+            return res.status(400).json({ 
+                error: 'Origin and destination are required',
+                example: '/api/serpapi/search?origin=MNL&destination=CEB'
+            });
+        }
+
+        const flights = await serpApi.searchFlights(origin, destination, date);
+        
+        res.json({
+            origin,
+            destination,
+            date: date || 'flexible',
+            flights: flights || [],
+            count: flights ? flights.length : 0,
+            source: 'SerpAPI Google Flights'
+        });
+    } catch (error) {
+        console.error('SerpAPI search error:', error);
+        res.status(500).json({ 
+            error: 'Search failed',
+            message: error.message 
+        });
+    }
+});
+
+// Search specific flight with SerpAPI
+app.get('/api/serpapi/flight/:number', async (req, res) => {
+    try {
+        const flightNumber = req.params.number.toUpperCase();
+        
+        const flightInfo = await serpApi.searchSpecificFlight(flightNumber);
+        
+        res.json({
+            flight_number: flightNumber,
+            data: flightInfo || null,
+            source: 'SerpAPI Google Search'
+        });
+    } catch (error) {
+        console.error('SerpAPI flight search error:', error);
+        res.status(500).json({ 
+            error: 'Flight search failed',
+            message: error.message 
+        });
+    }
+});
+
+// Search route flights and save to database
+app.post('/api/serpapi/route/:origin/:destination', async (req, res) => {
+    try {
+        const { origin, destination } = req.params;
+        const { date } = req.body;
+        
+        const flights = await serpUpdater.searchRouteFlights(origin, destination, date);
+        
+        res.json({
+            origin,
+            destination,
+            date: date || 'flexible',
+            flights_found: flights.length,
+            message: 'Flights searched and saved to database',
+            source: 'SerpAPI Google Flights'
+        });
+    } catch (error) {
+        console.error('SerpAPI route search error:', error);
+        res.status(500).json({ 
+            error: 'Route search failed',
+            message: error.message 
+        });
+    }
+});
+
+// Update database with SerpAPI
+app.post('/api/serpapi/update', async (req, res) => {
+    try {
+        const result = await serpUpdater.updateFlightDataFromSerpAPI();
+        
+        res.json({
+            message: 'Database updated with SerpAPI data',
+            result,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('SerpAPI update error:', error);
+        res.status(500).json({ 
+            error: 'Update failed',
+            message: error.message 
+        });
+    }
+});
+
+// Get SerpAPI database statistics
+app.get('/api/serpapi/stats', async (req, res) => {
+    try {
+        const stats = await serpUpdater.getDatabaseStats();
+        
+        res.json({
+            message: 'SerpAPI Database Statistics',
+            stats,
+            timestamp: new Date().toISOString()
+        });
+    } catch (error) {
+        console.error('SerpAPI stats error:', error);
+        res.status(500).json({ 
+            error: 'Stats retrieval failed',
+            message: error.message 
+        });
+    }
+});
+
+// Get SerpAPI search history for a flight
+app.get('/api/serpapi/history/:flight', (req, res) => {
+    const flightNumber = req.params.flight.toUpperCase();
+    
+    db.all(`
+        SELECT * FROM serpapi_flight_data 
+        WHERE flight_number = ? 
+        ORDER BY updated_at DESC
+    `, [flightNumber], (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).json({ error: 'Database query failed' });
+            return;
+        }
+        
+        res.json({
+            flight_number: flightNumber,
+            search_history: rows,
+            count: rows.length
+        });
+    });
+});
+
+// Get SerpAPI live flights
+app.get('/api/serpapi/live', (req, res) => {
+    const { limit = 50, flight_number, route } = req.query;
+    
+    let query = 'SELECT * FROM live_flights_serpapi';
+    let params = [];
+    let conditions = [];
+    
+    if (flight_number) {
+        conditions.push('flight_number = ?');
+        params.push(flight_number.toUpperCase());
+    }
+    
+    if (route) {
+        const [origin, destination] = route.split('-');
+        if (origin && destination) {
+            conditions.push('(departure_code = ? AND arrival_code = ?)');
+            params.push(origin.toUpperCase(), destination.toUpperCase());
+        }
+    }
+    
+    if (conditions.length > 0) {
+        query += ' WHERE ' + conditions.join(' AND ');
+    }
+    
+    query += ' ORDER BY updated_at DESC LIMIT ?';
+    params.push(parseInt(limit));
+    
+    db.all(query, params, (err, rows) => {
+        if (err) {
+            console.error('Database error:', err);
+            res.status(500).json({ error: 'Database query failed' });
+            return;
+        }
+        
+        res.json({
+            serpapi_live_flights: rows,
+            count: rows.length,
+            limited_to: limit,
+            filters: { flight_number, route }
+        });
+    });
+});
+
 // Error handling middleware
 app.use((err, req, res, next) => {
     console.error(err.stack);
@@ -307,12 +507,19 @@ app.use((req, res) => {
 app.listen(port, () => {
     console.log(`🚀 Security-MO Flight Search API running on port ${port}`);
     console.log(`📊 Database: ${dbPath}`);
+    console.log(`🔍 SerpAPI: Enabled`);
     console.log(`🌐 API Endpoints:`);
     console.log(`   GET http://localhost:${port}/`);
     console.log(`   GET http://localhost:${port}/api/airports`);
     console.log(`   GET http://localhost:${port}/api/flights`);
     console.log(`   GET http://localhost:${port}/api/search?from=MNL&to=LAX`);
     console.log(`   GET http://localhost:${port}/api/stats`);
+    console.log(`🔍 SerpAPI Endpoints:`);
+    console.log(`   GET http://localhost:${port}/api/serpapi/search?origin=MNL&destination=CEB`);
+    console.log(`   GET http://localhost:${port}/api/serpapi/flight/PR216`);
+    console.log(`   POST http://localhost:${port}/api/serpapi/route/MNL/CEB`);
+    console.log(`   POST http://localhost:${port}/api/serpapi/update`);
+    console.log(`   GET http://localhost:${port}/api/serpapi/stats`);
 });
 
 // Graceful shutdown
