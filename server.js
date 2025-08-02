@@ -5,6 +5,7 @@ const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
 const SerpAPIFlightSearcher = require('./serpapi-flight-searcher');
 const SerpAPIatabaseUpdater = require('./database-updater-serpapi');
+const { enhancedFlightSearch, getConnectionStats } = require('./enhanced-search-api');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -161,49 +162,11 @@ app.get('/api/flights', (req, res) => {
     });
 });
 
-// Flight search endpoint
-app.get('/api/search', (req, res) => {
-    const { from, to, date } = req.query;
-    
-    if (!from || !to) {
-        res.status(400).json({ 
-            error: 'Missing required parameters: from and to airport codes' 
-        });
-        return;
-    }
-    
-    const query = `
-        SELECT f.flight_number, f.airline_name, f.departure_time, f.arrival_time, 
-               f.duration_minutes, f.aircraft_type,
-               f.origin_code, f.destination_code,
-               orig.name as origin_name, orig.city as origin_city, orig.country as origin_country,
-               dest.name as dest_name, dest.city as dest_city, dest.country as dest_country,
-               orig.timezone as origin_timezone, dest.timezone as dest_timezone
-        FROM flights f
-        JOIN airports orig ON f.origin_code = orig.code
-        JOIN airports dest ON f.destination_code = dest.code
-        WHERE f.origin_code = ? AND f.destination_code = ?
-        AND f.status = 'active'
-        ORDER BY f.departure_time
-    `;
-    
-    db.all(query, [from.toUpperCase(), to.toUpperCase()], (err, rows) => {
-        if (err) {
-            res.status(500).json({ error: err.message });
-            return;
-        }
-        
-        res.json({
-            route: {
-                from: from.toUpperCase(),
-                to: to.toUpperCase(),
-                date: date || 'any'
-            },
-            flights: rows,
-            count: rows.length
-        });
-    });
-});
+// Flight search endpoint - Enhanced with connecting flights
+app.get('/api/search', enhancedFlightSearch(db));
+
+// Connection statistics endpoint
+app.get('/api/connections/stats', getConnectionStats);
 
 // Database stats endpoint
 app.get('/api/stats', (req, res) => {

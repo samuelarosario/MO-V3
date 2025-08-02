@@ -81,7 +81,7 @@ class ConnectingFlightAnalyzer {
             return {
                 color: '🔴 RED',
                 status: 'RISKY',
-                message: `⚠️ Very tight connection (${timeStr}) - High risk of missing connection`,
+                message: `⚠️ Very tight connection - High risk of missing connection`,
                 risk: 'high',
                 recommendation: 'Consider booking a later flight or allow more time'
             };
@@ -89,7 +89,7 @@ class ConnectingFlightAnalyzer {
             return {
                 color: '🟠 ORANGE',
                 status: 'TIGHT',
-                message: `⚡ Tight connection (${timeStr}) - Manageable but rush required`,
+                message: `⚡ Tight connection - Manageable but rush required`,
                 risk: 'medium',
                 recommendation: 'Move quickly between gates, check terminal maps'
             };
@@ -97,7 +97,7 @@ class ConnectingFlightAnalyzer {
             return {
                 color: '🟢 GREEN',
                 status: 'COMFORTABLE',
-                message: `✅ Comfortable connection (${timeStr}) - Plenty of time`,
+                message: `✅ Comfortable connection - Plenty of time`,
                 risk: 'low',
                 recommendation: 'Relax, explore airport amenities, grab a meal'
             };

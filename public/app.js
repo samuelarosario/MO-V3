@@ -1,4 +1,5 @@
 // Security-MO Flight Search App JavaScript
+// Updated: 2025-08-02 21:48 - Arrow removed from flight path
 
 class FlightSearchApp {
     constructor() {
@@ -290,17 +291,44 @@ class FlightSearchApp {
         const resultsInfo = document.getElementById('results-info');
         const flightsList = document.getElementById('flights-list');
 
-        if (data.flights && data.flights.length > 0) {
+        // Check if we have any flights (direct or connecting)
+        const hasFlights = (data.direct_flights && data.direct_flights.length > 0) || 
+                          (data.connecting_flights && data.connecting_flights.length > 0);
+
+        if (hasFlights) {
             // Show results
             resultsContainer.style.display = 'block';
             noResultsEl.style.display = 'none';
 
             // Update header
             resultsTitle.textContent = `${data.route.from} → ${data.route.to}`;
-            resultsInfo.textContent = `${data.count} flight${data.count !== 1 ? 's' : ''} found`;
+            
+            let infoText = '';
+            if (data.has_direct && data.has_connections) {
+                infoText = `${data.direct_flights.length} direct flight${data.direct_flights.length !== 1 ? 's' : ''} and ${data.connecting_flights.length} connecting option${data.connecting_flights.length !== 1 ? 's' : ''} found`;
+            } else if (data.has_direct) {
+                infoText = `${data.direct_flights.length} direct flight${data.direct_flights.length !== 1 ? 's' : ''} found`;
+            } else if (data.has_connections) {
+                infoText = `${data.connecting_flights.length} connecting flight${data.connecting_flights.length !== 1 ? 's' : ''} found`;
+            }
+            resultsInfo.textContent = infoText;
 
-            // Generate flight cards
-            const html = data.flights.map(flight => this.createFlightCard(flight)).join('');
+            let html = '';
+            
+            // Add direct flights section
+            if (data.has_direct) {
+                html += '<div class="flight-section"><h3 class="section-title">🛫 Direct Flights</h3>';
+                html += data.direct_flights.map(flight => this.createFlightCard(flight)).join('');
+                html += '</div>';
+            }
+            
+            // Add connecting flights section
+            if (data.has_connections) {
+                html += '<div class="flight-section"><h3 class="section-title">🔄 Connecting Flights</h3>';
+                html += data.connecting_flights.map(connection => this.createConnectionCard(connection)).join('');
+                html += '</div>';
+            }
+            
             flightsList.innerHTML = html;
 
             // Scroll to results
@@ -387,7 +415,6 @@ class FlightSearchApp {
                     <div class="flight-path">
                         <div class="duration">${formatDuration(flight.duration_minutes)}</div>
                         <div class="path-line">
-                            <span class="material-icons flight-icon">flight</span>
                         </div>
                     </div>
                     
@@ -403,6 +430,205 @@ class FlightSearchApp {
                 </div>
             </div>
         `;
+    }
+
+    createConnectionCard(connection) {
+        const formatTime = (time) => {
+            return time.substring(0, 5); // Remove seconds
+        };
+
+        const formatDuration = (minutes) => {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours}h ${mins}m`;
+        };
+
+        // Get layover warning color class
+        const getWarningClass = (risk) => {
+            switch(risk) {
+                case 'high': return 'warning-red';
+                case 'medium': return 'warning-orange';
+                case 'low': return 'warning-green';
+                default: return 'warning-green';
+            }
+        };
+
+        // Get layover icon
+        const getLayoverIcon = (risk) => {
+            switch(risk) {
+                case 'high': return '🔴';
+                case 'medium': return '🟠';
+                case 'low': return '🟢';
+                default: return '🟢';
+            }
+        };
+
+        const connectionId = `connection-${Math.random().toString(36).substr(2, 9)}`;
+
+        return `
+            <div class="flight-card connection-card-minimal">
+                <!-- Minimal View (Direct Flight Style) -->
+                <div class="connection-minimal" onclick="window.flightApp.toggleConnectionDetails('${connectionId}')">
+                    <div class="flight-header">
+                        <div class="airline-info">
+                            <span class="flight-number">${connection.outbound.airline} + ${connection.connecting.airline}</span>
+                            <span class="airline-name">via ${connection.layover.airport}</span>
+                        </div>
+                        <div class="layover-badge ${getWarningClass(connection.layover.warning.risk)}">
+                            ${getLayoverIcon(connection.layover.warning.risk)} ${formatDuration(connection.layover.minutes)} layover
+                        </div>
+                    </div>
+                    
+                    <div class="flight-route">
+                        <div class="airport-info">
+                            <div class="airport-time">
+                                <span class="material-icons time-icon">flight_takeoff</span>
+                                ${formatTime(connection.totalJourney.departure)}
+                            </div>
+                            <div class="airport-code">${connection.outbound.route.split(' → ')[0]}</div>
+                        </div>
+                        
+                        <div class="flight-path">
+                            <div class="connection-icon">
+                                <span class="flight-icon">✈️</span>
+                            </div>
+                            <div class="duration">${formatDuration(this.calculateFlightDuration(connection.totalJourney.departure, connection.totalJourney.arrival))}</div>
+                            <div class="path-line">
+                                <span class="connection-info">via ${connection.layover.airport}</span>
+                            </div>
+                        </div>
+                        
+                        <div class="airport-info">
+                            <div class="airport-time">
+                                <span class="material-icons time-icon">flight_land</span>
+                                ${formatTime(connection.totalJourney.arrival)}
+                            </div>
+                            <div class="airport-code">${connection.connecting.route.split(' → ')[1]}</div>
+                        </div>
+                    </div>
+                    
+                    <div class="expand-section">
+                        <span class="expand-text">View details</span>
+                        <div class="expand-arrow">
+                            <span class="material-icons">expand_more</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed View (Hidden by default) -->
+                <div class="connection-details" id="${connectionId}" style="display: none;">
+                    <div class="details-header">
+                        <h4>Flight Details</h4>
+                        <div class="total-journey-time">
+                            Total Journey: ${formatDuration(this.calculateFlightDuration(connection.totalJourney.departure, connection.totalJourney.arrival))}
+                        </div>
+                    </div>
+
+                    <div class="connection-route">
+                        <!-- First Flight -->
+                        <div class="flight-segment">
+                            <div class="segment-header">
+                                <span class="flight-number">${connection.outbound.flight.replace(/^([A-Z]{2})\s+\1\s+/, '$1 ')}</span>
+                                <span class="airline-name">${connection.outbound.airline}</span>
+                            </div>
+                            <div class="flight-info">
+                                <div class="airport-info">
+                                    <div class="airport-time">
+                                        <span class="material-icons time-icon">flight_takeoff</span>
+                                        ${formatTime(connection.outbound.departure)}
+                                    </div>
+                                    <div class="airport-code">${connection.outbound.route.split(' → ')[0]}</div>
+                                </div>
+                                
+                                <div class="flight-path">
+                                    <div class="duration">${formatDuration(this.calculateFlightDuration(connection.outbound.departure, connection.outbound.arrival))}</div>
+                                    <div class="aircraft">${connection.outbound.aircraft}</div>
+                                </div>
+                                
+                                <div class="airport-info">
+                                    <div class="airport-time">
+                                        <span class="material-icons time-icon">flight_land</span>
+                                        ${formatTime(connection.outbound.arrival)}
+                                    </div>
+                                    <div class="airport-code">${connection.layover.airport}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Layover -->
+                        <div class="layover-info ${getWarningClass(connection.layover.warning.risk)}">
+                            <div class="layover-content">
+                                <div class="layover-warning-text"><span class="layover-duration-highlight">${formatDuration(connection.layover.minutes)}</span> layover at ${connection.layover.airport}<br>${connection.layover.warning.message}</div>
+                            </div>
+                        </div>
+
+                        <!-- Second Flight -->
+                        <div class="flight-segment">
+                            <div class="segment-header">
+                                <span class="flight-number">${connection.connecting.flight.replace(/^([A-Z]{2})\s+\1\s+/, '$1 ')}</span>
+                                <span class="airline-name">${connection.connecting.airline}</span>
+                            </div>
+                            <div class="flight-info">
+                                <div class="airport-info">
+                                    <div class="airport-time">
+                                        <span class="material-icons time-icon">flight_takeoff</span>
+                                        ${formatTime(connection.connecting.departure)}
+                                    </div>
+                                    <div class="airport-code">${connection.layover.airport}</div>
+                                </div>
+                                
+                                <div class="flight-path">
+                                    <div class="duration">${formatDuration(this.calculateFlightDuration(connection.connecting.departure, connection.connecting.arrival))}</div>
+                                    <div class="aircraft">${connection.connecting.aircraft}</div>
+                                </div>
+                                
+                                <div class="airport-info">
+                                    <div class="airport-time">
+                                        <span class="material-icons time-icon">flight_land</span>
+                                        ${formatTime(connection.connecting.arrival)}
+                                    </div>
+                                    <div class="airport-code">${connection.connecting.route.split(' → ')[1]}</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+
+    calculateFlightDuration(depTime, arrTime) {
+        const [depHour, depMin] = depTime.split(':').map(Number);
+        const [arrHour, arrMin] = arrTime.split(':').map(Number);
+        
+        let depMinutes = depHour * 60 + depMin;
+        let arrMinutes = arrHour * 60 + arrMin;
+        
+        // Handle overnight flights
+        if (arrMinutes < depMinutes) {
+            arrMinutes += 24 * 60;
+        }
+        
+        return arrMinutes - depMinutes;
+    }
+
+    toggleConnectionDetails(connectionId) {
+        const detailsEl = document.getElementById(connectionId);
+        const minimalEl = detailsEl.previousElementSibling;
+        const arrowEl = minimalEl.querySelector('.expand-arrow .material-icons');
+        const expandTextEl = minimalEl.querySelector('.expand-text');
+        
+        if (detailsEl.style.display === 'none') {
+            detailsEl.style.display = 'block';
+            arrowEl.textContent = 'expand_less';
+            expandTextEl.textContent = 'Hide details';
+            minimalEl.classList.add('expanded');
+        } else {
+            detailsEl.style.display = 'none';
+            arrowEl.textContent = 'expand_more';
+            expandTextEl.textContent = 'View details';
+            minimalEl.classList.remove('expanded');
+        }
     }
 
     showLoading(show) {
@@ -702,5 +928,5 @@ class FlightSearchApp {
 
 // Initialize the app when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
-    new FlightSearchApp();
+    window.flightApp = new FlightSearchApp();
 });
