@@ -91,7 +91,7 @@ app.get('/api/airports/:code', (req, res) => {
 
 // Search flights
 app.get('/api/flights', (req, res) => {
-    const { origin, destination, airline, limit = 20 } = req.query;
+    const { flight_number, origin, destination, airline, limit = 20 } = req.query;
     
     let query = `
         SELECT f.*, 
@@ -104,6 +104,13 @@ app.get('/api/flights', (req, res) => {
     
     let params = [];
     let conditions = [];
+    
+    if (flight_number) {
+        // Handle wildcard patterns
+        let flightPattern = flight_number.replace(/\*/g, '%');
+        conditions.push('f.flight_number LIKE ?');
+        params.push(flightPattern);
+    }
     
     if (origin) {
         conditions.push('f.origin_code = ?');
@@ -202,20 +209,85 @@ app.get('/api/stats', (req, res) => {
             }
             stats.flights = flightCount.count;
             
-            db.all('SELECT airline_name, COUNT(*) as routes FROM flights GROUP BY airline_name ORDER BY routes DESC', (err, airlines) => {
-                if (err) {
-                    res.status(500).json({ error: err.message });
-                    return;
+            // Check for live flights table
+            db.get('SELECT COUNT(*) as count FROM live_flights', (err, liveCount) => {
+                if (!err && liveCount) {
+                    stats.live_flights = liveCount.count;
+                } else {
+                    stats.live_flights = 0;
                 }
-                stats.airlines = airlines;
                 
-                res.json({
-                    database: 'security-mo.db',
-                    status: 'operational',
-                    stats: stats,
-                    timestamp: new Date().toISOString()
+                db.all('SELECT airline_name, COUNT(*) as routes FROM flights GROUP BY airline_name ORDER BY routes DESC', (err, airlines) => {
+                    if (err) {
+                        res.status(500).json({ error: err.message });
+                        return;
+                    }
+                    stats.airlines = airlines;
+                    
+                    res.json({
+                        database: 'security-mo.db',
+                        status: 'operational',
+                        stats: stats,
+                        timestamp: new Date().toISOString(),
+                        opensky_integration: true
+                    });
                 });
             });
+        });
+    });
+});
+
+// Live flights endpoint (from OpenSky integration)
+app.get('/api/live-flights', (req, res) => {
+    db.all(`
+        SELECT flight_number, airline_code, icao24, latitude, longitude, 
+               altitude, velocity, heading, last_contact, updated_at
+        FROM live_flights 
+        ORDER BY updated_at DESC
+    `, [], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json({
+            live_flights: rows,
+            count: rows.length,
+            last_updated: rows.length > 0 ? rows[0].updated_at : null
+        });
+    });
+});
+
+// Database explorer endpoint
+app.get('/api/database', (req, res) => {
+    const { table } = req.query;
+    
+    if (!table) {
+        // Return list of tables
+        db.all(`SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`, [], (err, tables) => {
+            if (err) {
+                res.status(500).json({ error: err.message });
+                return;
+            }
+            res.json({
+                tables: tables.map(t => t.name),
+                message: 'Available tables in database'
+            });
+        });
+        return;
+    }
+    
+    // Return data from specific table
+    const limit = parseInt(req.query.limit) || 50;
+    db.all(`SELECT * FROM ${table} LIMIT ?`, [limit], (err, rows) => {
+        if (err) {
+            res.status(500).json({ error: err.message });
+            return;
+        }
+        res.json({
+            table: table,
+            data: rows,
+            count: rows.length,
+            limited_to: limit
         });
     });
 });

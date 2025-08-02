@@ -1,0 +1,64 @@
+{
+  "updateConfig": {
+    "database": {
+      "path": "./security-mo.db",
+      "backupEnabled": true,
+      "backupPath": "./backups/",
+      "logPath": "./logs/"
+    },
+    "validation": {
+      "enabled": true,
+      "requiredFields": [
+        "flight_number",
+        "airline_code", 
+        "airline_name",
+        "origin_code",
+        "destination_code",
+        "departure_time",
+        "arrival_time",
+        "duration_minutes"
+      ]
+    },
+    "dataSources": {
+      "philippine-airlines": {
+        "enabled": true,
+        "airlineCode": "PR",
+        "airlineName": "Philippine Airlines",
+        "updateFrequency": "daily"
+      },
+      "cebu-pacific": {
+        "enabled": true,
+        "airlineCode": "5J",
+        "airlineName": "Cebu Pacific",
+        "updateFrequency": "daily"
+      },
+      "airasia": {
+        "enabled": false,
+        "airlineCode": "Z2",
+        "airlineName": "AirAsia Philippines",
+        "updateFrequency": "weekly"
+      }
+    },
+    "apiEndpoints": {
+      "flightaware": {
+        "enabled": false,
+        "apiKey": "YOUR_API_KEY_HERE",
+        "baseUrl": "https://aeroapi.flightaware.com/aeroapi/",
+        "rateLimit": "100/hour"
+      },
+      "aviationstack": {
+        "enabled": false,
+        "apiKey": "YOUR_API_KEY_HERE", 
+        "baseUrl": "http://api.aviationstack.com/v1/",
+        "rateLimit": "500/month"
+      }
+    }
+  },
+  "schedules": {
+    "automatic": {
+      "enabled": false,
+      "dailyUpdate": "02:00",
+      "weeklyRefresh": "Sunday 01:00"
+    }
+  }
+}

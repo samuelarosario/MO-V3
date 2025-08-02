@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Logo Test</title>
+    <style>
+        .logo-test {
+            display: inline-block;
+            margin: 10px;
+            text-align: center;
+        }
+        .logo-test img {
+            width: 48px;
+            height: 48px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h2>Airline Logo Test</h2>
+    
+    <div class="logo-test">
+        <img src="/images/airlines/PR.png" alt="Philippine Airlines">
+        <div>PR - Philippine Airlines</div>
+    </div>
+    
+    <div class="logo-test">
+        <img src="/images/airlines/PX.png" alt="Air Niugini" 
+             onerror="this.style.border='2px solid red'; this.alt='FAILED TO LOAD: ' + this.alt;">
+        <div>PX - Air Niugini</div>
+    </div>
+    
+    <div class="logo-test">
+        <img src="/images/airlines/SQ.png" alt="Singapore Airlines">
+        <div>SQ - Singapore Airlines</div>
+    </div>
+    
+    <div class="logo-test">
+        <img src="/images/airlines/QF.png" alt="Qantas">
+        <div>QF - Qantas</div>
+    </div>
+    
+    <h3>Test Results:</h3>
+    <p>If the PX logo has a red border, it failed to load. Otherwise, the logo file is working correctly.</p>
+    
+    <script>
+        // Log any image loading errors
+        document.querySelectorAll('img').forEach(img => {
+            img.onerror = function() {
+                console.error('Failed to load:', this.src);
+                this.style.border = '2px solid red';
+                this.title = 'Failed to load: ' + this.src;
+            };
+            img.onload = function() {
+                console.log('Successfully loaded:', this.src);
+            };
+        });
+    </script>
+</body>
+</html>

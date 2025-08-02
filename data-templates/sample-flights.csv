@@ -1,0 +1,4 @@
+flight_number,airline_code,airline_name,origin_code,destination_code,departure_time,arrival_time,duration_minutes,aircraft_type,days_of_week,effective_from,effective_to
+Z2392,Z2,AirAsia Philippines,MNL,KUL,08:25,12:15,230,Airbus A320,1111111,2025-01-01,2025-12-31
+Z2884,Z2,AirAsia Philippines,MNL,BKK,21:45,23:35,170,Airbus A320,1111111,2025-01-01,2025-12-31
+Z2966,Z2,AirAsia Philippines,MNL,KUL,14:30,18:20,230,Airbus A321,1111111,2025-01-01,2025-12-31

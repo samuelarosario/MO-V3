@@ -1,0 +1,30 @@
+[
+  {
+    "flight_number": "5J311",
+    "airline_code": "5J",
+    "airline_name": "Cebu Pacific",
+    "origin_code": "MNL",
+    "destination_code": "SIN",
+    "departure_time": "06:15",
+    "arrival_time": "10:05",
+    "duration_minutes": 230,
+    "aircraft_type": "Airbus A320",
+    "days_of_week": "1111111",
+    "effective_from": "2025-01-01",
+    "effective_to": "2025-12-31"
+  },
+  {
+    "flight_number": "5J817",
+    "airline_code": "5J",
+    "airline_name": "Cebu Pacific",
+    "origin_code": "MNL",
+    "destination_code": "HKG",
+    "departure_time": "14:50",
+    "arrival_time": "17:00",
+    "duration_minutes": 130,
+    "aircraft_type": "Airbus A321",
+    "days_of_week": "1111111",
+    "effective_from": "2025-01-01",
+    "effective_to": "2025-12-31"
+  }
+]

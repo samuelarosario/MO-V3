@@ -43,6 +43,20 @@ class FlightSearchApp {
             }
         });
 
+        // Tab key support for destination field - select first suggestion
+        document.getElementById('destination').addEventListener('keydown', (e) => {
+            if (e.key === 'Tab') {
+                const suggestionsEl = document.getElementById('destination-suggestions');
+                if (suggestionsEl.style.display === 'block') {
+                    const firstSuggestion = suggestionsEl.querySelector('.suggestion-item');
+                    if (firstSuggestion) {
+                        e.preventDefault(); // Prevent default tab behavior
+                        firstSuggestion.click(); // Trigger the click event to select the suggestion
+                    }
+                }
+            }
+        });
+
         // Clear data attributes when user manually types
         document.getElementById('origin').addEventListener('input', (e) => {
             if (e.inputType !== 'insertReplacementText') {
@@ -113,7 +127,7 @@ class FlightSearchApp {
         const value = event.target.value;
         const suggestionsId = `${inputType}-suggestions`;
         
-        if (value.length < 2) {
+        if (value.length < 1) {
             this.hideSuggestions(suggestionsId);
             return;
         }
@@ -354,8 +368,6 @@ class FlightSearchApp {
                         </div>
                         <div class="flight-sub-row">
                             <div class="airline-name">${flight.airline_name}</div>
-                        </div>
-                        <div class="flight-aircraft-row">
                             <div class="aircraft-type">${flight.aircraft_type || 'Aircraft type not specified'}</div>
                         </div>
                     </div>
@@ -484,15 +496,17 @@ class FlightSearchApp {
     }
 
     async loadFlightsTable() {
+        const flightNumber = document.getElementById('flight-number').value.trim();
         const origin = document.getElementById('flight-origin').value.trim().toUpperCase();
         const destination = document.getElementById('flight-destination').value.trim().toUpperCase();
         const airline = document.getElementById('flight-airline').value.trim();
         
         const params = new URLSearchParams();
+        if (flightNumber) params.append('flight_number', flightNumber);
         if (origin) params.append('origin', origin);
         if (destination) params.append('destination', destination);
         if (airline) params.append('airline', airline);
-        params.append('limit', '50');
+        params.append('limit', '100');
 
         try {
             const response = await fetch(`${this.apiBase}/flights?${params}`);
@@ -512,39 +526,159 @@ class FlightSearchApp {
             return;
         }
 
+        // Store flights data for sorting
+        this.currentFlights = flights;
+
         const html = `
-            <table>
+            <table class="sortable-table">
                 <thead>
                     <tr>
-                        <th>Flight</th>
-                        <th>Airline</th>
-                        <th>Route</th>
-                        <th>Departure</th>
-                        <th>Arrival</th>
-                        <th>Duration</th>
-                        <th>Aircraft</th>
+                        <th class="sortable" data-column="flight_number">
+                            Flight
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="airline_name">
+                            Airline
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="route">
+                            Route
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="departure_time">
+                            Departure
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="arrival_time">
+                            Arrival
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="duration_minutes">
+                            Duration
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="aircraft_type">
+                            Aircraft
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
+                        <th class="sortable" data-column="status">
+                            Status
+                            <span class="material-icons sort-icon">unfold_more</span>
+                        </th>
                     </tr>
                 </thead>
-                <tbody>
-                    ${flights.map(flight => `
-                        <tr>
-                            <td class="code">${flight.flight_number}</td>
-                            <td>${flight.airline_name}</td>
-                            <td>
-                                <strong>${flight.origin_code}</strong> → <strong>${flight.destination_code}</strong><br>
-                                <small>${flight.origin_city} → ${flight.dest_city}</small>
-                            </td>
-                            <td>${flight.departure_time.substring(0, 5)}</td>
-                            <td>${flight.arrival_time.substring(0, 5)}</td>
-                            <td>${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m</td>
-                            <td>${flight.aircraft_type || 'N/A'}</td>
-                        </tr>
-                    `).join('')}
+                <tbody id="flights-table-body">
+                    ${this.renderFlightRows(flights)}
                 </tbody>
             </table>
         `;
         
         tableEl.innerHTML = html;
+        
+        // Add sorting event listeners
+        this.setupTableSorting();
+    }
+
+    renderFlightRows(flights) {
+        return flights.map(flight => `
+            <tr>
+                <td class="code">${flight.flight_number}</td>
+                <td>${flight.airline_name}</td>
+                <td>
+                    <strong>${flight.origin_code}</strong> → <strong>${flight.destination_code}</strong><br>
+                    <small>${flight.origin_city || flight.origin_code} → ${flight.dest_city || flight.destination_code}</small>
+                </td>
+                <td>${flight.departure_time.substring(0, 5)}</td>
+                <td>${flight.arrival_time.substring(0, 5)}</td>
+                <td>${Math.floor(flight.duration_minutes / 60)}h ${flight.duration_minutes % 60}m</td>
+                <td>${flight.aircraft_type || 'N/A'}</td>
+                <td>
+                    <span class="status-badge status-${flight.status || 'unknown'}">${flight.status || 'scheduled'}</span>
+                </td>
+            </tr>
+        `).join('');
+    }
+
+    setupTableSorting() {
+        const sortableHeaders = document.querySelectorAll('.sortable');
+        
+        sortableHeaders.forEach(header => {
+            header.addEventListener('click', () => {
+                const column = header.dataset.column;
+                const currentOrder = header.dataset.order || 'asc';
+                const newOrder = currentOrder === 'asc' ? 'desc' : 'asc';
+                
+                // Reset all other headers
+                sortableHeaders.forEach(h => {
+                    h.dataset.order = '';
+                    h.querySelector('.sort-icon').textContent = 'unfold_more';
+                });
+                
+                // Update current header
+                header.dataset.order = newOrder;
+                header.querySelector('.sort-icon').textContent = newOrder === 'asc' ? 'keyboard_arrow_up' : 'keyboard_arrow_down';
+                
+                // Sort and re-render
+                this.sortFlights(column, newOrder);
+            });
+        });
+    }
+
+    sortFlights(column, order) {
+        const sortedFlights = [...this.currentFlights].sort((a, b) => {
+            let valueA, valueB;
+            
+            switch (column) {
+                case 'flight_number':
+                    valueA = a.flight_number;
+                    valueB = b.flight_number;
+                    break;
+                case 'airline_name':
+                    valueA = a.airline_name;
+                    valueB = b.airline_name;
+                    break;
+                case 'route':
+                    valueA = `${a.origin_code}-${a.destination_code}`;
+                    valueB = `${b.origin_code}-${b.destination_code}`;
+                    break;
+                case 'departure_time':
+                    valueA = a.departure_time;
+                    valueB = b.departure_time;
+                    break;
+                case 'arrival_time':
+                    valueA = a.arrival_time;
+                    valueB = b.arrival_time;
+                    break;
+                case 'duration_minutes':
+                    valueA = parseInt(a.duration_minutes);
+                    valueB = parseInt(b.duration_minutes);
+                    break;
+                case 'aircraft_type':
+                    valueA = a.aircraft_type || '';
+                    valueB = b.aircraft_type || '';
+                    break;
+                case 'status':
+                    valueA = a.status || 'scheduled';
+                    valueB = b.status || 'scheduled';
+                    break;
+                default:
+                    return 0;
+            }
+            
+            if (typeof valueA === 'string') {
+                valueA = valueA.toLowerCase();
+                valueB = valueB.toLowerCase();
+            }
+            
+            if (order === 'asc') {
+                return valueA < valueB ? -1 : valueA > valueB ? 1 : 0;
+            } else {
+                return valueA > valueB ? -1 : valueA < valueB ? 1 : 0;
+            }
+        });
+        
+        // Re-render table body
+        document.getElementById('flights-table-body').innerHTML = this.renderFlightRows(sortedFlights);
     }
 
     async loadAirlinesGrid() {

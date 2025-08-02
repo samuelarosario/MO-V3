@@ -418,6 +418,7 @@ body {
 .flight-sub-row {
     display: flex;
     align-items: center;
+    gap: 16px;
     margin-left: 0px;
 }
 
@@ -435,7 +436,7 @@ body {
 
 .airline-logo {
     width: 85px;
-    height: 34px;
+    height: 43px;
     object-fit: contain;
     border-radius: 6px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.12);
@@ -451,7 +452,7 @@ body {
 
 .airline-logo-fallback {
     width: 85px;
-    height: 34px;
+    height: 43px;
     background: #f8f9fa;
     border: 1px solid #e8eaed;
     border-radius: 6px;
@@ -482,7 +483,7 @@ body {
 
 .airline-name {
     color: #5f6368;
-    font-size: 14px;
+    font-size: 27px;
     font-weight: 500;
     margin-bottom: 0px;
 }
@@ -757,6 +758,70 @@ body {
 .data-table .code {
     font-weight: 500;
     color: #1a73e8;
+}
+
+/* Sortable Table */
+.sortable-table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+    transition: background-color 0.2s;
+}
+
+.sortable-table th.sortable:hover {
+    background: #f1f3f4;
+}
+
+.sortable-table th.sortable .sort-icon {
+    font-size: 18px;
+    margin-left: 8px;
+    color: #9aa0a6;
+    transition: color 0.2s;
+}
+
+.sortable-table th.sortable[data-order="asc"] .sort-icon,
+.sortable-table th.sortable[data-order="desc"] .sort-icon {
+    color: #1a73e8;
+}
+
+/* Status badges */
+.status-badge {
+    display: inline-block;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.status-active {
+    background: #e8f5e8;
+    color: #137333;
+}
+
+.status-scheduled {
+    background: #e3f2fd;
+    color: #1565c0;
+}
+
+.status-landed {
+    background: #f3e5f5;
+    color: #7b1fa2;
+}
+
+.status-cancelled {
+    background: #ffebee;
+    color: #c62828;
+}
+
+.status-delayed {
+    background: #fff3e0;
+    color: #ef6c00;
+}
+
+.status-unknown {
+    background: #f5f5f5;
+    color: #616161;
 }
 
 /* Airlines Grid */
